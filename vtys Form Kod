@@ -1,0 +1,66 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using Npgsql;
+
+namespace HastaneYönetimSistemi
+{
+    public partial class Form1 : Form
+    {
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+            private void button1_Click(object sender, EventArgs e)
+        {
+            // 1. BAĞLANTI CÜMLESİ (Adres Tarifi)
+            // Server: genelde localhost
+            // Port: genelde 5432
+            // User Id: genelde postgres
+            // Password: SENİN ŞİFREN (Bunu doğru yazman şart!)
+            // Database: Valentina'da oluşturduğun veritabanı adı
+            string baglantiAdresi = "Server=localhost;Port=5432;Database=HastaneYonetimSistemi;User Id=postgres;Password=112358;";
+
+            // 2. BAĞLANTIYI OLUŞTUR
+            NpgsqlConnection baglanti = new NpgsqlConnection(baglantiAdresi);
+
+            try
+            {
+                // 3. KAPIYI AÇ
+                baglanti.Open();
+
+                // 4. EMRİNİ VER (SQL Sorgusu)
+                // Burada basitçe Doktorlar tablosunu çekiyoruz.
+                // Daha detaylı görmek istersen: "SELECT * FROM Kisiler" de diyebilirsin.
+                string sorgu = "SELECT * FROM Doktorlar";
+
+                // 5. VERİLERİ GETİRME ARACI (Kamyon)
+                NpgsqlDataAdapter da = new NpgsqlDataAdapter(sorgu, baglanti);
+
+                // 6. SANAL TABLO OLUŞTUR (Kamyondaki yükü boşaltacak yer)
+                DataTable tablo = new DataTable();
+
+                // 7. VERİLERİ DOLDUR
+                da.Fill(tablo);
+
+                // 8. EKRANDA GÖSTER (DataGridView'e bağla)
+                dataGridView1.DataSource = tablo;
+
+                // Bağlantıyı kapatmayı unutma
+                baglanti.Close();
+            }
+            catch (Exception hata)
+            {
+                // Bir sorun olursa mesaj kutusu ile göster
+                MessageBox.Show("Hata oluştu: " + hata.Message);
+            }
+        }
+    }
+    }
