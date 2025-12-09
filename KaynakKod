@@ -1,0 +1,205 @@
+-- --- BÖLÜM 1: TEMİZLİK ---
+-- Bu komutlar her şeyi siler, tertemiz yapar. Hata almanı engeller.
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO public;
+
+-- --- BÖLÜM 2: TABLOLARI KURMA ---
+
+-- 1. KİŞİLER
+CREATE TABLE Kisiler (
+    KisiID SERIAL PRIMARY KEY,
+    Ad VARCHAR(50) NOT NULL,
+    Soyad VARCHAR(50) NOT NULL,
+    TCNo VARCHAR(11) UNIQUE NOT NULL,
+    Cinsiyet VARCHAR(10),
+    DogumTarihi DATE,
+    Telefon VARCHAR(15),
+    Adres TEXT,
+    Email VARCHAR(100)
+);
+
+-- 2. SİGORTA ŞİRKETİ
+CREATE TABLE SigortaSirketi (
+    SigortaID SERIAL PRIMARY KEY,
+    SigortaAdi VARCHAR(100),
+    Kapsam VARCHAR(255)
+);
+
+-- 3. HASTALAR
+CREATE TABLE Hastalar (
+    HastaID SERIAL PRIMARY KEY,
+    KisilerID INT NOT NULL REFERENCES Kisiler(KisiID),
+    KanGrubu VARCHAR(5),
+    SigortaID INT REFERENCES SigortaSirketi(SigortaID)
+);
+
+-- 4. UZMANLIKLAR
+CREATE TABLE Uzmanliklar (
+    UzmanlikID SERIAL PRIMARY KEY,
+    UzmanlikAdi VARCHAR(100)
+);
+
+-- 5. POLİKLİNİKLER
+CREATE TABLE Poliklinikler (
+    PoliklinikID SERIAL PRIMARY KEY,
+    Ad VARCHAR(100),
+    Konum VARCHAR(100),
+    UzmanlikID INT REFERENCES Uzmanliklar(UzmanlikID)
+);
+
+-- 6. DOKTORLAR
+CREATE TABLE Doktorlar (
+    DoktorID SERIAL PRIMARY KEY,
+    KisiID INT NOT NULL REFERENCES Kisiler(KisiID),
+    PoliklinikID INT REFERENCES Poliklinikler(PoliklinikID)
+);
+
+-- 7. DEPARTMANLAR
+CREATE TABLE Departmanlar (
+    DepartmanID SERIAL PRIMARY KEY,
+    Ad VARCHAR(100),
+    KatNo VARCHAR(10)
+);
+
+-- 8. GÖREVLER
+CREATE TABLE Gorevler (
+    GorevID SERIAL PRIMARY KEY,
+    GorevAdi VARCHAR(100)
+);
+
+-- 9. PERSONEL
+CREATE TABLE Personel (
+    PersonelID SERIAL PRIMARY KEY,
+    GorevID INT REFERENCES Gorevler(GorevID),
+    DepartmanID INT REFERENCES Departmanlar(DepartmanID),
+    KisiID INT NOT NULL REFERENCES Kisiler(KisiID)
+);
+
+-- 10. RANDEVULAR
+CREATE TABLE Randevular (
+    RandevuID SERIAL PRIMARY KEY,
+    HastaID INT NOT NULL REFERENCES Hastalar(HastaID),
+    DoktorID INT NOT NULL REFERENCES Doktorlar(DoktorID),
+    Tarih DATE,
+    Saat TIME,
+    Durum VARCHAR(20)
+);
+
+-- 11. MUAYENELER
+CREATE TABLE Muayeneler (
+    MuayeneID SERIAL PRIMARY KEY,
+    RandevuID INT NOT NULL REFERENCES Randevular(RandevuID),
+    Aciklama TEXT,
+    Tarih DATE
+);
+
+-- 12. YATAN HASTA
+CREATE TABLE YatanHasta (
+    YatisID SERIAL PRIMARY KEY,
+    HastaID INT NOT NULL REFERENCES Hastalar(HastaID),
+    MuayeneID INT REFERENCES Muayeneler(MuayeneID)
+);
+
+-- 13. TEST TANIMLARI
+CREATE TABLE TestTanimlari (
+    TestID SERIAL PRIMARY KEY,
+    TestAdi VARCHAR(100),
+    Ucret DECIMAL(10, 2),
+    ReferansDegeri VARCHAR(100)
+);
+
+-- 14. MUAYENE TESTLERİ
+CREATE TABLE MuayeneTestleri (
+    MuayeneID INT REFERENCES Muayeneler(MuayeneID),
+    TestID INT REFERENCES TestTanimlari(TestID),
+    Sonuc TEXT,
+    Durum VARCHAR(20),
+    SonucTarih DATE,
+    PRIMARY KEY (MuayeneID, TestID)
+);
+
+-- 15. TANI
+CREATE TABLE Tani (
+    ICDKKodu VARCHAR(20) PRIMARY KEY,
+    TaniAdi VARCHAR(255)
+);
+
+-- 16. MUAYENE TANILAR
+CREATE TABLE MuayeneTanilar (
+    MuayeneID INT REFERENCES Muayeneler(MuayeneID),
+    TaniID VARCHAR(20) REFERENCES Tani(ICDKKodu),
+    PRIMARY KEY (MuayeneID, TaniID)
+);
+
+-- 17. REÇETELER
+CREATE TABLE Receteler (
+    ReceteID SERIAL PRIMARY KEY,
+    MuayeneID INT NOT NULL REFERENCES Muayeneler(MuayeneID),
+    Tarih DATE
+);
+
+-- 18. İLAÇLAR
+CREATE TABLE Ilaclar (
+    IlacID SERIAL PRIMARY KEY,
+    Ad VARCHAR(100)
+);
+
+-- 19. REÇETE İLAÇLAR
+CREATE TABLE ReceteIlaclar (
+    ReceteIlaclarID SERIAL PRIMARY KEY,
+    ReceteID INT REFERENCES Receteler(ReceteID),
+    IlacID INT REFERENCES Ilaclar(IlacID),
+    Dozaj VARCHAR(50),
+    KullanimSuresi VARCHAR(50)
+);
+
+-- 20. ODALAR
+CREATE TABLE Odalar (
+    OdaID SERIAL PRIMARY KEY,
+    OdaNo VARCHAR(20),
+    Tip VARCHAR(50),
+    Konum VARCHAR(100)
+);
+
+-- 21. YATAKLAR
+CREATE TABLE Yataklar (
+    YatakID SERIAL PRIMARY KEY,
+    OdaID INT REFERENCES Odalar(OdaID),
+    YatisID INT REFERENCES YatanHasta(YatisID),
+    Durum VARCHAR(20)
+);
+
+-- 22. FATURALAR
+CREATE TABLE Faturalar (
+    FaturaID SERIAL PRIMARY KEY,
+    HastaID INT REFERENCES Hastalar(HastaID),
+    MuayeneID INT REFERENCES Muayeneler(MuayeneID),
+    ReceteID INT REFERENCES Receteler(ReceteID),
+    SigortaID INT REFERENCES SigortaSirketi(SigortaID),
+    Tutar DECIMAL(10, 2),
+    OdemeDurumu VARCHAR(20),
+    OdemeTipi VARCHAR(20),
+    Tarih DATE
+);
+
+-- 23. YATAN HASTA YEMEK
+CREATE TABLE YatanHastaYemek (
+    YemekID SERIAL PRIMARY KEY,
+    YatisID INT NOT NULL REFERENCES YatanHasta(YatisID),
+    Ogun VARCHAR(20),
+    Tarih DATE,
+    Saat TIME,
+    TeslimDurumu VARCHAR(20)
+);
+
+-- 24. REFAKATÇİLER
+CREATE TABLE Refakatciler (
+    RefakatciID SERIAL PRIMARY KEY,
+    YatisID INT NOT NULL REFERENCES YatanHasta(YatisID),
+    KisiID INT NOT NULL REFERENCES Kisiler(KisiID),
+    Iliski VARCHAR(50),
+    GirisTarihi DATE,
+    CikisTarihi DATE
+);
