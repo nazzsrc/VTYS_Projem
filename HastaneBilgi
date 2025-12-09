@@ -1,0 +1,101 @@
+-- 1. KİŞİLER (Veri Girişi Başlıyor)
+INSERT INTO Kisiler (Ad, Soyad, TCNo, Cinsiyet, DogumTarihi, Telefon, Adres, Email) VALUES
+('Ayşe', 'Demir', '11111111111', 'Kadın', '1990-05-15', '05551112233', 'İstanbul', 'ayse@mail.com'),
+('Mehmet', 'Kaya', '22222222222', 'Erkek', '1985-08-22', '05554445566', 'Ankara', 'mehmet@mail.com'),
+('Ahmet', 'Yılmaz', '33333333333', 'Erkek', '1975-01-10', '05321112233', 'İzmir', 'dr.ahmet@hastane.com'),
+('Zeynep', 'Şahin', '44444444444', 'Kadın', '1982-03-30', '05324445566', 'Bursa', 'dr.zeynep@hastane.com'),
+('Ali', 'Vural', '55555555555', 'Erkek', '1995-11-12', '05051234567', 'İstanbul', 'ali.pers@hastane.com'),
+('Fatma', 'Çelik', '66666666666', 'Kadın', '1980-07-07', '05069876543', 'Kocaeli', 'fatma.yakin@mail.com');
+
+-- 2. SİGORTA ŞİRKETLERİ
+INSERT INTO SigortaSirketi (SigortaAdi, Kapsam) VALUES
+('SGK', 'Genel Sağlık Sigortası'),
+('Allianz', 'Özel Sağlık Sigortası'),
+('Acıbadem Sigorta', 'Yatarak Tedavi');
+
+-- 3. HASTALAR
+INSERT INTO Hastalar (KisilerID, KanGrubu, SigortaID) VALUES
+(1, 'A Rh+', 1), 
+(2, '0 Rh-', 2);
+
+-- 4. UZMANLIKLAR
+INSERT INTO Uzmanliklar (UzmanlikAdi) VALUES
+('Dahiliye'),
+('Kardiyoloji'),
+('Göz Hastalıkları'),
+('Ortopedi');
+
+-- 5. POLİKLİNİKLER
+INSERT INTO Poliklinikler (Ad, Konum, UzmanlikID) VALUES
+('Dahiliye Polikliniği-1', 'Zemin Kat', 1),
+('Kardiyoloji Polikliniği-1', '1. Kat', 2);
+
+-- 6. DOKTORLAR
+INSERT INTO Doktorlar (KisiID, PoliklinikID) VALUES
+(3, 1),
+(4, 2);
+
+-- 7. DEPARTMANLAR ve GÖREVLER
+INSERT INTO Departmanlar (Ad, KatNo) VALUES ('İnsan Kaynakları', '5'), ('Temizlik', 'Zemin');
+INSERT INTO Gorevler (GorevAdi) VALUES ('Hemşire'), ('Temizlik Personeli'), ('Sekreter');
+
+-- 8. PERSONEL
+INSERT INTO Personel (GorevID, DepartmanID, KisiID) VALUES
+(2, 2, 5);
+
+-- 9. ODALAR
+INSERT INTO Odalar (OdaNo, Tip, Konum) VALUES
+('101', 'Tek Kişilik', 'Kat 1'),
+('102', 'Çift Kişilik', 'Kat 1');
+
+-- 10. İLAÇLAR
+INSERT INTO Ilaclar (Ad) VALUES ('Parol'), ('Augmentin'), ('Majezik'), ('Aspirin');
+
+-- 11. TANILAR
+INSERT INTO Tani (ICDKKodu, TaniAdi) VALUES
+('J00', 'Akut Nazofarenjit (Nezle)'),
+('I10', 'Esansiyel Hipertansiyon'),
+('E11', 'Tip 2 Diyabet');
+
+-- 12. TEST TANIMLARI
+INSERT INTO TestTanimlari (TestAdi, Ucret, ReferansDegeri) VALUES
+('Hemogram', 150.00, 'WBC: 4-10'),
+('EKG', 250.00, 'Normal Sinüs');
+
+-- 13. RANDEVULAR
+INSERT INTO Randevular (HastaID, DoktorID, Tarih, Saat, Durum) VALUES
+(1, 1, '2023-10-25', '09:00', 'Tamamlandı'),
+(2, 2, '2023-10-26', '14:30', 'Bekliyor');
+
+-- 14. MUAYENELER
+INSERT INTO Muayeneler (RandevuID, Aciklama, Tarih) VALUES
+(1, 'Hasta boğaz ağrısı ile geldi.', '2023-10-25');
+
+-- 15. MUAYENE TANI VE TESTLERİ
+INSERT INTO MuayeneTanilar (MuayeneID, TaniID) VALUES (1, 'J00');
+INSERT INTO MuayeneTestleri (MuayeneID, TestID, Sonuc, Durum, SonucTarih) VALUES 
+(1, 1, 'WBC Yüksek', 'Tamamlandı', '2023-10-25');
+
+-- 16. REÇETELER
+INSERT INTO Receteler (MuayeneID, Tarih) VALUES (1, '2023-10-25');
+INSERT INTO ReceteIlaclar (ReceteID, IlacID, Dozaj, KullanimSuresi) VALUES
+(1, 1, '2x1 Tok', '5 Gün'),
+(1, 2, '2x1 Tok', '7 Gün');
+
+-- 17. YATAN HASTA
+INSERT INTO YatanHasta (HastaID, MuayeneID) VALUES (1, 1);
+
+-- 18. YATAKLAR
+INSERT INTO Yataklar (OdaID, YatisID, Durum) VALUES (1, 1, 'Dolu'), (2, NULL, 'Boş');
+
+-- 19. REFAKATÇİ
+INSERT INTO Refakatciler (YatisID, KisiID, Iliski, GirisTarihi) VALUES
+(1, 6, 'Kardeşi', '2023-10-25');
+
+-- 20. YEMEK SERVİSİ
+INSERT INTO YatanHastaYemek (YatisID, Ogun, Tarih, Saat, TeslimDurumu) VALUES
+(1, 'Öğle', '2023-10-25', '12:30', 'Teslim Edildi');
+
+-- 21. FATURA
+INSERT INTO Faturalar (HastaID, MuayeneID, ReceteID, SigortaID, Tutar, OdemeDurumu, OdemeTipi, Tarih) VALUES
+(1, 1, 1, 1, 1500.00, 'Ödendi', 'Kredi Kartı', '2023-10-25');
