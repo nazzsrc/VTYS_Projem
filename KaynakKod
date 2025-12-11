@@ -1,13 +1,16 @@
--- --- BÖLÜM 1: TEMİZLİK ---
--- Bu komutlar her şeyi siler, tertemiz yapar. Hata almanı engeller.
+-- ============================================================
+-- ADIM 0: TEMİZLİK (HER ŞEYİ SİL VE SIFIRLA)
+-- ============================================================
 DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;
 GRANT ALL ON SCHEMA public TO postgres;
 GRANT ALL ON SCHEMA public TO public;
 
--- --- BÖLÜM 2: TABLOLARI KURMA ---
+-- ============================================================
+-- ADIM 1: SÖZLÜK VE ANA TABLOLAR (Önce bunlar kurulmalı)
+-- ============================================================
 
--- 1. KİŞİLER
+-- 1. KİŞİLER (Herkesin Babası)
 CREATE TABLE Kisiler (
     KisiID SERIAL PRIMARY KEY,
     Ad VARCHAR(50) NOT NULL,
@@ -20,89 +23,39 @@ CREATE TABLE Kisiler (
     Email VARCHAR(100)
 );
 
--- 2. SİGORTA ŞİRKETİ
+-- 2. SİGORTA ŞİRKETİ (22. Madde)
 CREATE TABLE SigortaSirketi (
     SigortaID SERIAL PRIMARY KEY,
     SigortaAdi VARCHAR(100),
     Kapsam VARCHAR(255)
 );
 
--- 3. HASTALAR
-CREATE TABLE Hastalar (
-    HastaID SERIAL PRIMARY KEY,
-    KisilerID INT NOT NULL REFERENCES Kisiler(KisiID),
-    KanGrubu VARCHAR(5),
-    SigortaID INT REFERENCES SigortaSirketi(SigortaID)
-);
-
--- 4. UZMANLIKLAR
+-- 3. UZMANLIKLAR (6. Madde)
 CREATE TABLE Uzmanliklar (
     UzmanlikID SERIAL PRIMARY KEY,
     UzmanlikAdi VARCHAR(100)
 );
 
--- 5. POLİKLİNİKLER
-CREATE TABLE Poliklinikler (
-    PoliklinikID SERIAL PRIMARY KEY,
-    Ad VARCHAR(100),
-    Konum VARCHAR(100),
-    UzmanlikID INT REFERENCES Uzmanliklar(UzmanlikID)
-);
-
--- 6. DOKTORLAR
-CREATE TABLE Doktorlar (
-    DoktorID SERIAL PRIMARY KEY,
-    KisiID INT NOT NULL REFERENCES Kisiler(KisiID),
-    PoliklinikID INT REFERENCES Poliklinikler(PoliklinikID)
-);
-
--- 7. DEPARTMANLAR
+-- 4. DEPARTMANLAR (8. Madde)
 CREATE TABLE Departmanlar (
     DepartmanID SERIAL PRIMARY KEY,
     Ad VARCHAR(100),
     KatNo VARCHAR(10)
 );
 
--- 8. GÖREVLER
+-- 5. GÖREVLER (9. Madde)
 CREATE TABLE Gorevler (
     GorevID SERIAL PRIMARY KEY,
     GorevAdi VARCHAR(100)
 );
 
--- 9. PERSONEL
-CREATE TABLE Personel (
-    PersonelID SERIAL PRIMARY KEY,
-    GorevID INT REFERENCES Gorevler(GorevID),
-    DepartmanID INT REFERENCES Departmanlar(DepartmanID),
-    KisiID INT NOT NULL REFERENCES Kisiler(KisiID)
+-- 6. TANI TANIMLARI (16. Madde)
+CREATE TABLE Tani (
+    ICDKKodu VARCHAR(20) PRIMARY KEY,
+    TaniAdi VARCHAR(255)
 );
 
--- 10. RANDEVULAR
-CREATE TABLE Randevular (
-    RandevuID SERIAL PRIMARY KEY,
-    HastaID INT NOT NULL REFERENCES Hastalar(HastaID),
-    DoktorID INT NOT NULL REFERENCES Doktorlar(DoktorID),
-    Tarih DATE,
-    Saat TIME,
-    Durum VARCHAR(20)
-);
-
--- 11. MUAYENELER
-CREATE TABLE Muayeneler (
-    MuayeneID SERIAL PRIMARY KEY,
-    RandevuID INT NOT NULL REFERENCES Randevular(RandevuID),
-    Aciklama TEXT,
-    Tarih DATE
-);
-
--- 12. YATAN HASTA
-CREATE TABLE YatanHasta (
-    YatisID SERIAL PRIMARY KEY,
-    HastaID INT NOT NULL REFERENCES Hastalar(HastaID),
-    MuayeneID INT REFERENCES Muayeneler(MuayeneID)
-);
-
--- 13. TEST TANIMLARI
+-- 7. TEST TANIMLARI (13. Madde)
 CREATE TABLE TestTanimlari (
     TestID SERIAL PRIMARY KEY,
     TestAdi VARCHAR(100),
@@ -110,43 +63,119 @@ CREATE TABLE TestTanimlari (
     ReferansDegeri VARCHAR(100)
 );
 
--- 14. MUAYENE TESTLERİ
-CREATE TABLE MuayeneTestleri (
+-- 8. İLAÇLAR (19. Madde)
+CREATE TABLE Ilaclar (
+    IlacID SERIAL PRIMARY KEY,
+    Ad VARCHAR(100)
+);
+
+-- 9. ODALAR (26. Madde)
+CREATE TABLE Odalar (
+    OdaID SERIAL PRIMARY KEY,
+    OdaNo VARCHAR(20),
+    Tip VARCHAR(50),
+    Konum VARCHAR(100)
+);
+
+-- ============================================================
+-- ADIM 2: BAĞIMLI TABLOLAR (FK İçerenler)
+-- ============================================================
+
+-- 10. POLİKLİNİKLER (7. Madde - Uzmanlığa bağlı)
+CREATE TABLE Poliklinikler (
+    PoliklinikID SERIAL PRIMARY KEY,
+    Ad VARCHAR(100),
+    Konum VARCHAR(100),
+    UzmanlikID INT REFERENCES Uzmanliklar(UzmanlikID)
+);
+
+-- 11. HASTALAR (2. Madde - Kişi ve Sigortaya bağlı)
+CREATE TABLE Hastalar (
+    HastaID SERIAL PRIMARY KEY,
+    KisilerID INT NOT NULL REFERENCES Kisiler(KisiID),
+    KanGrubu VARCHAR(5),
+    SigortaID INT REFERENCES SigortaSirketi(SigortaID)
+);
+
+-- 12. DOKTORLAR (4. Madde - Kişi ve Polikliniğe bağlı)
+CREATE TABLE Doktorlar (
+    DoktorID SERIAL PRIMARY KEY,
+    KisiID INT NOT NULL REFERENCES Kisiler(KisiID),
+    PoliklinikID INT REFERENCES Poliklinikler(PoliklinikID)
+);
+
+-- 13. PERSONEL (5. Madde - Kişi, Görev, Departmana bağlı)
+CREATE TABLE Personel (
+    PersonelID SERIAL PRIMARY KEY,
+    GorevID INT REFERENCES Gorevler(GorevID),
+    DepartmanID INT REFERENCES Departmanlar(DepartmanID),
+    KisiID INT NOT NULL REFERENCES Kisiler(KisiID)
+);
+
+-- 14. RANDEVULAR (10. Madde - Hasta ve Doktora bağlı)
+CREATE TABLE Randevular (
+    RandevuID SERIAL PRIMARY KEY,
+    HastaID INT NOT NULL REFERENCES Hastalar(HastaID),
+    DoktorID INT NOT NULL REFERENCES Doktorlar(DoktorID),
+    Tarih DATE,
+    Saat TIME,
+    Durum VARCHAR(20) DEFAULT 'Bekliyor'
+);
+
+-- 15. MUAYENELER (11. Madde - Randevuya bağlı)
+CREATE TABLE Muayeneler (
+    MuayeneID SERIAL PRIMARY KEY,
+    RandevuID INT NOT NULL REFERENCES Randevular(RandevuID),
+    Aciklama TEXT,
+    Tarih DATE
+);
+
+-- 16. YATAN HASTA (3. Madde - Hasta ve Muayeneye bağlı)
+CREATE TABLE YatanHasta (
+    YatisID SERIAL PRIMARY KEY,
+    HastaID INT NOT NULL REFERENCES Hastalar(HastaID),
     MuayeneID INT REFERENCES Muayeneler(MuayeneID),
-    TestID INT REFERENCES TestTanimlari(TestID),
-    Sonuc TEXT,
-    Durum VARCHAR(20),
-    SonucTarih DATE,
-    PRIMARY KEY (MuayeneID, TestID)
+    GirisTarihi DATE DEFAULT CURRENT_DATE,
+    CikisTarihi DATE
 );
 
--- 15. TANI
-CREATE TABLE Tani (
-    ICDKKodu VARCHAR(20) PRIMARY KEY,
-    TaniAdi VARCHAR(255)
+-- 17. YATAKLAR (27. Madde - Oda ve YatanHastaya bağlı)
+CREATE TABLE Yataklar (
+    YatakID SERIAL PRIMARY KEY,
+    OdaID INT REFERENCES Odalar(OdaID),
+    YatisID INT REFERENCES YatanHasta(YatisID),
+    Durum VARCHAR(20) DEFAULT 'Boş'
 );
 
--- 16. MUAYENE TANILAR
-CREATE TABLE MuayeneTanilar (
-    MuayeneID INT REFERENCES Muayeneler(MuayeneID),
-    TaniID VARCHAR(20) REFERENCES Tani(ICDKKodu),
-    PRIMARY KEY (MuayeneID, TaniID)
-);
-
--- 17. REÇETELER
+-- 18. REÇETELER (17. Madde - Muayeneye bağlı)
 CREATE TABLE Receteler (
     ReceteID SERIAL PRIMARY KEY,
     MuayeneID INT NOT NULL REFERENCES Muayeneler(MuayeneID),
     Tarih DATE
 );
 
--- 18. İLAÇLAR
-CREATE TABLE Ilaclar (
-    IlacID SERIAL PRIMARY KEY,
-    Ad VARCHAR(100)
+-- ============================================================
+-- ADIM 3: ARA TABLOLAR (İŞTE BUNLAR EKSİKTİ DEDİKLERİN)
+-- ============================================================
+
+-- 19. MUAYENE TESTLERİ (14. Madde - Çoka Çok Tablo)
+CREATE TABLE MuayeneTestleri (
+    MuayeneID INT REFERENCES Muayeneler(MuayeneID),
+    TestID INT REFERENCES TestTanimlari(TestID),
+    Sonuc TEXT,
+    Durum VARCHAR(20),
+    SonucTarih DATE,
+    PRIMARY KEY (MuayeneID, TestID) -- Çift Anahtar
 );
 
--- 19. REÇETE İLAÇLAR
+-- 20. MUAYENE TANILAR (15. Madde - Çoka Çok Tablo)
+CREATE TABLE MuayeneTanilar (
+    MuayeneID INT REFERENCES Muayeneler(MuayeneID),
+    TaniID VARCHAR(20) REFERENCES Tani(ICDKKodu),
+    PRIMARY KEY (MuayeneID, TaniID) -- Çift Anahtar
+);
+
+-- 21. REÇETE İLAÇLAR (18. Madde - Çoka Çok Tablo)
 CREATE TABLE ReceteIlaclar (
     ReceteIlaclarID SERIAL PRIMARY KEY,
     ReceteID INT REFERENCES Receteler(ReceteID),
@@ -155,36 +184,24 @@ CREATE TABLE ReceteIlaclar (
     KullanimSuresi VARCHAR(50)
 );
 
--- 20. ODALAR
-CREATE TABLE Odalar (
-    OdaID SERIAL PRIMARY KEY,
-    OdaNo VARCHAR(20),
-    Tip VARCHAR(50),
-    Konum VARCHAR(100)
-);
+-- ============================================================
+-- ADIM 4: DİĞER SON TABLOLAR
+-- ============================================================
 
--- 21. YATAKLAR
-CREATE TABLE Yataklar (
-    YatakID SERIAL PRIMARY KEY,
-    OdaID INT REFERENCES Odalar(OdaID),
-    YatisID INT REFERENCES YatanHasta(YatisID),
-    Durum VARCHAR(20)
-);
-
--- 22. FATURALAR
+-- 22. FATURALAR (23. Madde)
 CREATE TABLE Faturalar (
     FaturaID SERIAL PRIMARY KEY,
     HastaID INT REFERENCES Hastalar(HastaID),
     MuayeneID INT REFERENCES Muayeneler(MuayeneID),
     ReceteID INT REFERENCES Receteler(ReceteID),
     SigortaID INT REFERENCES SigortaSirketi(SigortaID),
-    Tutar DECIMAL(10, 2),
-    OdemeDurumu VARCHAR(20),
+    Tutar DECIMAL(10, 2) DEFAULT 0,
+    OdemeDurumu VARCHAR(20) DEFAULT 'Bekliyor',
     OdemeTipi VARCHAR(20),
-    Tarih DATE
+    Tarih DATE DEFAULT CURRENT_DATE
 );
 
--- 23. YATAN HASTA YEMEK
+-- 23. YATAN HASTA YEMEK (24. Madde)
 CREATE TABLE YatanHastaYemek (
     YemekID SERIAL PRIMARY KEY,
     YatisID INT NOT NULL REFERENCES YatanHasta(YatisID),
@@ -194,7 +211,7 @@ CREATE TABLE YatanHastaYemek (
     TeslimDurumu VARCHAR(20)
 );
 
--- 24. REFAKATÇİLER
+-- 24. REFAKATÇİLER (25. Madde)
 CREATE TABLE Refakatciler (
     RefakatciID SERIAL PRIMARY KEY,
     YatisID INT NOT NULL REFERENCES YatanHasta(YatisID),
@@ -203,3 +220,94 @@ CREATE TABLE Refakatciler (
     GirisTarihi DATE,
     CikisTarihi DATE
 );
+
+-- 25. İSTATİSTİK TABLOSU (Triggerlar için gerekli - Bağımsız Tablo)
+CREATE TABLE HastaneIstatistik (
+    Ad VARCHAR(50) PRIMARY KEY,
+    Sayi INT DEFAULT 0
+);
+INSERT INTO HastaneIstatistik (Ad, Sayi) VALUES ('ToplamHasta', 0), ('ToplamDoktor', 0), ('ToplamPersonel', 0);
+
+
+-- ============================================================
+-- ADIM 5: FUNCTION VE TRIGGERLAR (Hocanın İstedikleri)
+-- ============================================================
+
+-- Function: Yaş Hesapla
+CREATE OR REPLACE FUNCTION fn_YasHesapla(p_TC VARCHAR) RETURNS INT AS $$
+DECLARE v_Dogum DATE;
+BEGIN
+    SELECT DogumTarihi INTO v_Dogum FROM Kisiler WHERE TCNo = p_TC;
+    IF v_Dogum IS NULL THEN RETURN 0; END IF;
+    RETURN DATE_PART('year', AGE(CURRENT_DATE, v_Dogum));
+END; $$ LANGUAGE plpgsql;
+
+-- Function: Doktor Muayene Sayısı
+CREATE OR REPLACE FUNCTION fn_DoktorMuayeneSayisi(p_DoktorTC VARCHAR) RETURNS INT AS $$
+DECLARE v_Sayi INT;
+BEGIN
+    SELECT COUNT(*) INTO v_Sayi FROM Randevular r JOIN Doktorlar d ON r.DoktorID = d.DoktorID JOIN Kisiler k ON d.KisiID = k.KisiID WHERE k.TCNo = p_DoktorTC;
+    RETURN v_Sayi;
+END; $$ LANGUAGE plpgsql;
+
+-- Function: Hasta Yıllık Reçete Sayısı
+CREATE OR REPLACE FUNCTION fn_HastaYillikRecete(p_HastaTC VARCHAR) RETURNS INT AS $$
+DECLARE v_Sayi INT;
+BEGIN
+    SELECT COUNT(*) INTO v_Sayi FROM Receteler rec JOIN Muayeneler m ON rec.MuayeneID = m.MuayeneID JOIN Randevular r ON m.RandevuID = r.RandevuID JOIN Hastalar h ON r.HastaID = h.HastaID JOIN Kisiler k ON h.KisilerID = k.KisiID WHERE k.TCNo = p_HastaTC AND rec.Tarih > (CURRENT_DATE - INTERVAL '1 year');
+    RETURN v_Sayi;
+END; $$ LANGUAGE plpgsql;
+
+-- Trigger: Hasta Sayısı Güncelleme
+CREATE OR REPLACE FUNCTION trg_HastaSayiGuncelle() RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN UPDATE HastaneIstatistik SET Sayi = Sayi + 1 WHERE Ad = 'ToplamHasta'; RETURN NEW;
+    ELSIF (TG_OP = 'DELETE') THEN UPDATE HastaneIstatistik SET Sayi = Sayi - 1 WHERE Ad = 'ToplamHasta'; RETURN OLD;
+    END IF; RETURN NULL;
+END; $$ LANGUAGE plpgsql;
+CREATE TRIGGER tetik_HastaSayisi AFTER INSERT OR DELETE ON Hastalar FOR EACH ROW EXECUTE FUNCTION trg_HastaSayiGuncelle();
+
+-- Trigger: Yatak Boşaltma
+CREATE OR REPLACE FUNCTION trg_YatakBosalt() RETURNS TRIGGER AS $$
+BEGIN UPDATE Yataklar SET Durum = 'Boş' WHERE YatakID = OLD.YatakID; RETURN OLD; END; $$ LANGUAGE plpgsql;
+CREATE TRIGGER tetik_YatisSilinince AFTER DELETE ON YatanHasta FOR EACH ROW EXECUTE FUNCTION trg_YatakBosalt();
+
+-- Trigger: Reçete İlaç Temizleme
+CREATE OR REPLACE FUNCTION trg_ReceteIlacTemizle() RETURNS TRIGGER AS $$
+BEGIN DELETE FROM ReceteIlaclar WHERE ReceteID = OLD.ReceteID; RETURN OLD; END; $$ LANGUAGE plpgsql;
+CREATE TRIGGER tetik_ReceteSilinince BEFORE DELETE ON Receteler FOR EACH ROW EXECUTE FUNCTION trg_ReceteIlacTemizle();
+
+
+-- ============================================================
+-- ADIM 6: VERİ DOLDURMA (50 ADET RASTGELE)
+-- ============================================================
+
+INSERT INTO SigortaSirketi (SigortaAdi) VALUES ('SGK'), ('Allianz');
+INSERT INTO Uzmanliklar (UzmanlikAdi) VALUES ('Dahiliye'), ('Göz');
+INSERT INTO Poliklinikler (Ad, UzmanlikID) VALUES ('Dahiliye-1', 1), ('Göz-1', 2);
+INSERT INTO Departmanlar (Ad) VALUES ('Yönetim');
+INSERT INTO Gorevler (GorevAdi) VALUES ('Hemşire');
+INSERT INTO Odalar (OdaNo, Tip) VALUES ('101', 'Tek');
+INSERT INTO Yataklar (OdaID, Durum) VALUES (1, 'Boş'), (1, 'Boş');
+INSERT INTO Ilaclar (Ad) VALUES ('Parol'), ('Aspirin');
+INSERT INTO TestTanimlari (TestAdi, Ucret) VALUES ('Kan', 100), ('MR', 500);
+INSERT INTO Tani (ICDKKodu, TaniAdi) VALUES ('J00', 'Grip');
+
+DO $$
+DECLARE
+    isimler TEXT[] := ARRAY['Ali', 'Veli', 'Ayşe', 'Fatma', 'Can', 'Cem'];
+    r_ad TEXT; r_tc TEXT; k_id INT;
+BEGIN
+    FOR i IN 1..50 LOOP
+        r_ad := isimler[1 + floor(random()*6)::int];
+        r_tc := '1' || floor(random()*8999999999 + 1000000000)::text;
+        
+        INSERT INTO Kisiler (Ad, Soyad, TCNo, Telefon, DogumTarihi)
+        VALUES (r_ad, 'Yılmaz', r_tc, '05555555555', '1990-01-01') RETURNING KisiID INTO k_id;
+        
+        IF i <= 5 THEN INSERT INTO Doktorlar (KisiID, PoliklinikID) VALUES (k_id, 1);
+        ELSIF i <= 10 THEN INSERT INTO Personel (KisiID, DepartmanID, GorevID) VALUES (k_id, 1, 1);
+        ELSE INSERT INTO Hastalar (KisilerID, SigortaID) VALUES (k_id, 1);
+        END IF;
+    END LOOP;
+END $$;
