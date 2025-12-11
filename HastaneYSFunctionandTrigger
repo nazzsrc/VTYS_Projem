@@ -1,0 +1,128 @@
+CREATE OR REPLACE FUNCTION HastaEkleVeRandevu(
+    p_ad VARCHAR,
+    p_soyad VARCHAR,
+    p_tcno VARCHAR,
+    p_cinsiyet VARCHAR,
+    p_dogum DATE
+)
+RETURNS VOID AS $$
+DECLARE
+    yeni_kisi INT;
+    yeni_hasta INT;
+BEGIN
+    INSERT INTO Kisiler (Ad, Soyad, TCNo, Cinsiyet, DogumTarihi)
+    VALUES (p_ad, p_soyad, p_tcno, p_cinsiyet, p_dogum)
+    RETURNING KisiID INTO yeni_kisi;
+
+    INSERT INTO Hastalar (KisilerID)
+    VALUES (yeni_kisi)
+    RETURNING HastaID INTO yeni_hasta;
+
+    INSERT INTO Randevular (HastaID, Tarih, Durum)
+    VALUES (yeni_hasta, CURRENT_DATE, 'Beklemede');
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION DoktorAta(p_HastaID INT, p_DoktorID INT)
+RETURNS VOID AS $$
+BEGIN
+    INSERT INTO Randevular (HastaID, DoktorID, Tarih, Durum)
+    VALUES (p_HastaID, p_DoktorID, CURRENT_DATE, 'Beklemede');
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION ReceteOlustur(p_MuayeneID INT, p_IlacID INT, p_Dozaj VARCHAR, p_Sure VARCHAR)
+RETURNS VOID AS $$
+DECLARE
+    yeni_recete INT;
+BEGIN
+    INSERT INTO Receteler (MuayeneID, Tarih)
+    VALUES (p_MuayeneID, CURRENT_DATE)
+    RETURNING ReceteID INTO yeni_recete;
+
+    INSERT INTO ReceteIlaclar (ReceteID, IlacID, Dozaj, KullanimSuresi)
+    VALUES (yeni_recete, p_IlacID, p_Dozaj, p_Sure);
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION YemekEkle(p_YatisID INT, p_Ogun VARCHAR, p_Saat TIME)
+RETURNS VOID AS $$
+BEGIN
+    INSERT INTO YatanHastaYemek (YatisID, Ogun, Tarih, Saat, TeslimDurumu)
+    VALUES (p_YatisID, p_Ogun, CURRENT_DATE, p_Saat, 'Beklemede');
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+CREATE OR REPLACE FUNCTION FaturaOluştur()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO Faturalar (HastaID, MuayeneID, Tutar, OdemeDurumu, Tarih)
+    VALUES (
+        (SELECT HastaID FROM Randevular WHERE RandevuID = NEW.RandevuID),
+        NEW.MuayeneID,
+        200,
+        'Beklemede',
+        CURRENT_DATE
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_MuayeneEklendi
+AFTER INSERT ON Muayeneler
+FOR EACH ROW
+EXECUTE FUNCTION FaturaOluştur();
+
+
+CREATE OR REPLACE FUNCTION RandevuSilTrigger()
+RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM Randevular WHERE HastaID = OLD.HastaID;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_HastaSil
+AFTER DELETE ON Hastalar
+FOR EACH ROW
+EXECUTE FUNCTION RandevuSilTrigger();
+
+
+CREATE OR REPLACE FUNCTION YatakDurumuKontrol()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE Yataklar
+    SET Durum = 'Dolu'
+    WHERE YatisID = NEW.YatisID;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_YatanHastaEklendi
+AFTER INSERT ON YatanHasta
+FOR EACH ROW
+EXECUTE FUNCTION YatakDurumuKontrol();
+
+
+
+CREATE OR REPLACE FUNCTION ReceteIlacSilTrigger()
+RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM ReceteIlaclar WHERE ReceteID = OLD.ReceteID;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_ReceteSil
+AFTER DELETE ON Receteler
+FOR EACH ROW
+EXECUTE FUNCTION ReceteIlacSilTrigger();
+
+
+
+
