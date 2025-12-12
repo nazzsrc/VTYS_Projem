@@ -311,3 +311,30 @@ BEGIN
         END IF;
     END LOOP;
 END $$;
+
+
+-- HASTA EKLEME FONKSİYONU (GÜNCELLENMİŞ - C# UYUMLU)
+-- Tarih kısmını TIMESTAMP yaptık ki hata vermesin.
+CREATE OR REPLACE FUNCTION sp_HastaEkle(
+    p_Ad VARCHAR, 
+    p_Soyad VARCHAR, 
+    p_TC VARCHAR, 
+    p_Cinsiyet VARCHAR,
+    p_DogumTarihi TIMESTAMP, -- Burayı değiştirdik!
+    p_Tel VARCHAR, 
+    p_Adres TEXT,
+    p_Email VARCHAR,
+    p_Kan VARCHAR
+)
+RETURNS VOID AS $$
+DECLARE yeni_kisi_id INT;
+BEGIN
+    -- Kişiyi ekle (Timestamp'i Date'e çevirerek kaydediyoruz: ::DATE)
+    INSERT INTO Kisiler (Ad, Soyad, TCNo, Cinsiyet, DogumTarihi, Telefon, Adres, Email) 
+    VALUES (p_Ad, p_Soyad, p_TC, p_Cinsiyet, p_DogumTarihi::DATE, p_Tel, p_Adres, p_Email)
+    RETURNING KisiID INTO yeni_kisi_id;
+    
+    -- Hastayı ekle
+    INSERT INTO Hastalar (KisilerID, KanGrubu, SigortaID) 
+    VALUES (yeni_kisi_id, p_Kan, 1);
+END; $$ LANGUAGE plpgsql;
