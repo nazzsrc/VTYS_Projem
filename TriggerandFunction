@@ -1,0 +1,164 @@
+-- 1. YAŞ HESAPLAMA
+-- Önce eskiyi sil (Parametre tipi VARCHAR olduğu için belirtiyoruz)
+DROP FUNCTION IF EXISTS fn_YasHesapla(VARCHAR);
+
+-- Yenisini oluştur
+CREATE OR REPLACE FUNCTION fn_YasHesapla(p_tc VARCHAR)
+RETURNS INT AS $$
+DECLARE
+    yas INT;
+BEGIN
+    SELECT EXTRACT(YEAR FROM AGE(CURRENT_DATE, k.DogumTarihi)) INTO yas
+    FROM Kisiler k
+    WHERE k.TCNo = p_tc;
+    
+    RETURN COALESCE(yas, 0); 
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- 2. DOKTOR MUAYENE SAYISI
+-- Önce eskiyi sil
+DROP FUNCTION IF EXISTS fn_DoktorMuayeneSayisi(INT);
+
+-- Yenisini oluştur
+CREATE OR REPLACE FUNCTION fn_DoktorMuayeneSayisi(p_doktorid INT)
+RETURNS INT AS $$
+DECLARE
+    sayi INT;
+BEGIN
+    SELECT COUNT(*) INTO sayi 
+    FROM Muayeneler 
+    WHERE DoktorID = p_doktorid;
+    
+    RETURN COALESCE(sayi, 0);
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- 3. HASTA YILLIK REÇETE SAYISI
+-- Önce eskiyi sil
+DROP FUNCTION IF EXISTS fn_HastaYillikRecete(VARCHAR);
+
+-- Yenisini oluştur
+CREATE OR REPLACE FUNCTION fn_HastaYillikRecete(p_tc VARCHAR)
+RETURNS INT AS $$
+DECLARE
+    sayi INT;
+BEGIN
+    SELECT COUNT(r.ReceteID) INTO sayi
+    FROM Receteler r
+    JOIN Muayeneler m ON r.MuayeneID = m.MuayeneID
+    JOIN Hastalar h ON m.HastaID = h.HastaID
+    JOIN Kisiler k ON h.KisilerID = k.KisiID
+    WHERE k.TCNo = p_tc 
+    AND r.Tarih > (CURRENT_DATE - INTERVAL '1 year');
+    
+    RETURN COALESCE(sayi, 0);
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- 4. HASTA YILLIK MUAYENE SAYISI
+-- Önce eskiyi sil
+DROP FUNCTION IF EXISTS fn_HastaYillikMuayene(VARCHAR);
+
+-- Yenisini oluştur
+CREATE OR REPLACE FUNCTION fn_HastaYillikMuayene(p_tc VARCHAR)
+RETURNS INT AS $$
+DECLARE
+    sayi INT;
+BEGIN
+    SELECT COUNT(m.MuayeneID) INTO sayi
+    FROM Muayeneler m
+    JOIN Hastalar h ON m.HastaID = h.HastaID
+    JOIN Kisiler k ON h.KisilerID = k.KisiID
+    WHERE k.TCNo = p_tc
+    AND m.MuayeneTarihi > (CURRENT_DATE - INTERVAL '1 year');
+    
+    RETURN COALESCE(sayi, 0);
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- 1. HASTA EKLEME TRIGGER (Sayaç Arttır)
+-- Önce Trigger'ı sil
+DROP TRIGGER IF EXISTS trg_HastaEkle ON Hastalar;
+-- Sonra Trigger Fonksiyonunu sil
+DROP FUNCTION IF EXISTS func_HastaSayisiArttir();
+
+-- Fonksiyonu Oluştur
+CREATE OR REPLACE FUNCTION func_HastaSayisiArttir() RETURNS TRIGGER AS $$
+BEGIN
+    -- Istatistikler tablosu yoksa hata vermemesi için UPDATE kullanıyoruz
+    UPDATE Istatistikler SET ToplamHasta = ToplamHasta + 1;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger'ı Oluştur
+CREATE TRIGGER trg_HastaEkle
+AFTER INSERT ON Hastalar
+FOR EACH ROW EXECUTE FUNCTION func_HastaSayisiArttir();
+
+
+-- 2. HASTA SİLME TRIGGER (Sayaç Azalt)
+-- Önce Trigger'ı sil
+DROP TRIGGER IF EXISTS trg_HastaSil ON Hastalar;
+-- Sonra Trigger Fonksiyonunu sil
+DROP FUNCTION IF EXISTS func_HastaSayisiAzalt();
+
+-- Fonksiyonu Oluştur
+CREATE OR REPLACE FUNCTION func_HastaSayisiAzalt() RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE Istatistikler SET ToplamHasta = ToplamHasta - 1;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trg_HastaSil
+AFTER DELETE ON Hastalar
+FOR EACH ROW EXECUTE FUNCTION func_HastaSayisiAzalt();
+
+
+-- 3. YATAN HASTA SİLİNİNCE YATAK BOŞALTMA
+
+DROP TRIGGER IF EXISTS trg_HastaTaburcu ON YatanHasta;
+-- Sonra Trigger Fonksiyonunu sil
+DROP FUNCTION IF EXISTS func_YatakBosalt();
+
+-- Fonksiyonu Oluştur
+CREATE OR REPLACE FUNCTION func_YatakBosalt() RETURNS TRIGGER AS $$
+BEGIN
+    -- Silinen kaydın YatakID'sini bulup durumu güncelle
+    UPDATE Yataklar SET DoluMu = false WHERE YatakID = OLD.YatakID;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger'ı Oluştur
+CREATE TRIGGER trg_HastaTaburcu
+AFTER DELETE ON YatanHasta
+FOR EACH ROW EXECUTE FUNCTION func_YatakBosalt();
+
+
+-- 4. REÇETE SİLİNİNCE İLAÇLARI SİLME
+-- Önce Trigger'ı sil
+DROP TRIGGER IF EXISTS trg_ReceteSil ON Receteler;
+-- Sonra Trigger Fonksiyonunu sil
+DROP FUNCTION IF EXISTS func_ReceteDetayTemizle();
+
+-- Fonksiyonu Oluştur
+CREATE OR REPLACE FUNCTION func_ReceteDetayTemizle() RETURNS TRIGGER AS $$
+BEGIN
+    -- Reçete silinmeden ÖNCE (BEFORE) bağlı ilaçları sil
+    DELETE FROM ReceteIlac WHERE ReceteID = OLD.ReceteID;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger'ı Oluştur
+CREATE TRIGGER trg_ReceteSil
+BEFORE DELETE ON Receteler
+FOR EACH ROW EXECUTE FUNCTION func_ReceteDetayTemizle();
